@@ -107,6 +107,158 @@ Master Broker收到消息之后会同步给Slave Broker，这样Slave Broker上�
 
 
 
+# 消息中间件路由中心架构原理
+
+
+
+## NameServer部署方案
+
+由上图我们看见了NameServer部署了2台机器，也就是说**NameServer支持集群化部署**
+
+
+
+为什么NameServe需要集群化部署呢？
+
+
+
+最主要的一个问题，**高可用性**
+
+
+
+因为NameServer是整个消息中间件的入口，首先它需要管理Broker的信息，别人都是通过它才能知道和那一台Broker通信的，如果NameServer不支持高可用，那么一台NameServer挂掉，那么我们整个消息中间件的集群都无法提供服务
+
+
+
+所以通常来说，NameServer一定会多机器部署，实现一个集群，起到高可用的效果，保证任何一台机器宕机，其他机器上的NameServer可以继续对外提供服务！
+
+
+
+## Broker是把信息发送到那个NameServer了呢？
+
+
+
+猜想1： 是不是不同的Broker注册到不同的NameServer上了呢？
+
+答案： 错误
+
+
+
+为什么了？ 你想，如果一个NameServer挂掉，是不是一部分Broker的信息也就丢失了呢？
+
+
+
+正确是：Broker会向每一台NameServer进行注册，就是说任何一台NameServer都会有完整的Broker集群的信息
+
+![](./images/14-Broker向NameServer注册.jpg)
+
+ 上图就示范了一个Master Broker向2台NameServer注册的场景
+
+
+
+## 系统如何从NameServer获取信息？
+
+
+
+第一种方案：就是NameServer将全部的Broker信息主动发送给全部的系统，告诉他们Broker的信息，
+
+
+
+这种方案好吗？明显不好，NameServer怎么会知道需要推送Broker信息给那些系统？ 未卜先知吗？
+
+
+
+
+
+第二种方案：就是每个Broker自己每隔一段时间就和NameServer交互，从NameServer处获取最新的Broker信息
+
+
+
+这种方案是不错的，**Broker每隔一段时间自己向NameServer获取最新的信息**
+
+![](./images/15-系统从NameServer获取路由信息.jpg)
+
+
+
+## 如何Broker挂了，NameServer怎么感知到的呢？
+
+
+
+现在Broker启动之后就向NameServer注册自己的信息，每隔NameServer都知道集群中有这么一台Broker的存在，然后各个系统也从NameServer哪里获取Broker的最新信息，也知道有这么一台Broker
+
+
+
+但是Broker挂了呢？
+
+
+
+要解决这个问题，靠的是Broker跟NameServer之间的**心跳机制**，Broker会每隔30秒给所有的NameServer发送心跳，告诉NameServer自己还活着
+
+![](./images/16-Broker和NameServer的心跳机制.jpg)
+
+每次NameServer收到Broker的心跳，就会更新这个Broker的最新心跳时间
+
+
+
+然后这个NameServer自己每隔10s会自己运行一个定时任务，检查超过120s未发送心跳的Broker，那么这个时候认为这个Broker已经挂了
+
+![](./images/17-NameServer检查心跳.jpg)
+
+
+
+## Broker挂了，系统是怎么感知到？
+
+
+
+如果Broker挂掉了，那么生产者和消费者是怎么感知到的呢？难道必须NameServer将Broker的信息发送给所有的系统吗？
+
+
+
+这个是不现实的，之前讲过了，NameServer发送信息这个方案是不靠谱的
+
+
+
+但是如果NameServer没有将挂掉的Broker信息通知给其他的系统，有可能出现这么一种情况
+
+在最初其他系统获取到了10个Broker
+
+但是，中途一台Broker宕机了
+
+
+
+由于没有通知其他系统，导致其他系统仍然认为Broker还有10个，那么有可能系统将信息发送给了一台宕机的Broker上，当然，这条消息是发送失败的
+
+![](./images/18-系统不知道Broker宕机了.jpg)
+
+针对这个情况怎么办？这个问题要我们以后去**分析生产者原理**的时候才会具体说他的细节，现在简单先提一下思路
+
+
+
+如果出现这种情况，我们有2种解决方案：
+
+
+
+方案1： 将这条消息发送给其他活着的Broker上
+
+
+
+方案2：我们可以考虑如果Master Broker挂掉了，那么我们等待一会儿发送给Salve Broker
+
+
+
+总之，这些都是思路，但是现在我们先知道，对于生产者而言，他是有一套容错机制的，即使一下子没感知到某个Broker挂了，他可以有别的方案去应对。
+
+
+
+而且过一会儿，系统又会重新从NameServer拉取最新的路由信息了，此时就会知道有一个Broker已经宕机了。
+
+
+
+## NameServer总结
+
+NameServer的集群化部署、Broker会注册到所有NameServer去、30s心跳机制和120s故障感知机制、生产者和消费者的客户端容错机制，这些是最核心的。
+
+
+
 # 后续问题
 
 - 大的架构原理是知道了，但是发送消息的时候面对N多台机器，到底应该向哪一台上面的Broker发送过去？
@@ -114,4 +266,14 @@ Master Broker收到消息之后会同步给Slave Broker，这样Slave Broker上�
 - RocketMQ的数据模型是什么，我们发送消息过去的时候，是发送到什么里面去，队列还是什么？
 
 - RocketMQ接收到数据之后是直接写磁盘吗，那性能会不会太差了？
+
+  
+
+  失去NameServer后
+
+- RocketMQ还能正常运行吗？
+
+- 生产者还能发送消息到Broker吗？
+
+- 消费者还能从Broker拉取消息吗？
 
