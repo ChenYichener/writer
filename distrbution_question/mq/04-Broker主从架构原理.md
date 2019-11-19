@@ -130,7 +130,7 @@
 
 
 
-# 基于 Deldger实现RokcetMQ高可用自动切换
+# 基于 Dledger实现RokcetMQ高可用自动切换
 
 在RocketMQ 4.5之后，这种情况得到了改变，因为RocketMQ支持了一种新的机制，叫做Dledger
 
@@ -148,7 +148,7 @@
 
 ![](./images/24-一个Master，多个Salve.jpg)
 
-此时，一旦Master Broker宕机了，就可以在多个副本，也就是多个Slave，通过Deldger技术和Raft协议算法，直接在Salve Broker中选举一个为新的Master Broker，然后这个新的Master Broker就可以对外提供服务了
+此时，一旦Master Broker宕机了，就可以在多个副本，也就是多个Slave，通过Dledger技术和Raft协议算法，直接在Salve Broker中选举一个为新的Master Broker，然后这个新的Master Broker就可以对外提供服务了
 
 
 
