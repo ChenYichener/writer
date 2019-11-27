@@ -14,6 +14,66 @@ NameServer的设计是采用的Peer-to-Peer的模式来做的，也就是可以�
 
 因此NameServer的集群化部署是必须的第一步
 
+# 部署单机NameServer和单机Broker
+
+
+
+下载源码
+
+ ```shell
+wget https://archive.apache.org/dist/rocketmq/4.4.0/rocketmq-all-4.4.0-source-release.zip
+ ```
+
+
+
+编译和打包
+
+```shell
+unzip rocketmq-all-4.4.0-source-release.zip
+cd rocketmq-all-4.4.0/
+mvn -Prelease-all -DskipTests clean install -U
+cd distribution/target/apache-rocketmq
+```
+
+
+
+
+
+```shell
+JAVA_OPT="${JAVA_OPT} -server -Xms128m -Xmx128m -Xmn128m
+```
+
+
+
+启动NameServer
+
+```shell
+nohup sh bin/mqnamesrv  &
+```
+
+
+
+生成broker配置文件，不然默认是阿里的服务器，客户端访问不到
+
+```shell
+mkdir conf/me-2m-2s-async
+sh mqbroker -m >../conf/me-2m-2s-async/broker.p
+```
+
+
+
+```shell
+# 仅仅这2行, 删除默认的其他配置
+brokerIP1=39.106.108.194
+autoCreateTopicEnable=true
+```
+
+启动Broker
+
+```shell
+nohup sh bin/mqbroker -n localhost:9876 -c conf/me-2m-async/broker.p  &
+```
+
 
 
 # 基于Dledger的Broker主从架构技术

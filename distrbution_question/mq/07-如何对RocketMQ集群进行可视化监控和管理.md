@@ -21,7 +21,7 @@ mvn package -DskipTests
 然后进入target目录下，可以看到一个jar包，接着执行下面的命令启动工作台：
 
 ```shell
-java -jar rocketmq-console-ng-1.0.1.jar --server.port=8080 --rocketmq.config.namesrvAddr=127.0.0.1:9876
+nohup java -jar rocketmq-console-ng-1.0.1.jar --server.port=8080 --rocketmq.config.namesrvAddr=127.0.0.1:9876 &
 ```
 
 这里务必要在启动的时候设置好NameServer的地址，如果有多个地址可以用分号隔开，接着就会看到工作台启动了，然后就通过浏览器访问那台机器的8080端口就可以了，就可以看到精美的工作台界面。
